@@ -16,9 +16,18 @@ jobs:
         go: [ '1.17', '1.18', '1.19' ]
     name: Go ${{ matrix.go }} sample
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup go
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Go Env
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
-      - run: go build -o giny ./cmd/giny/*
+        env:
+          GO111MODULE: on
+
+      - name: Unit Test
+        run: go test ./...
+
+      - name: Build
+        run: go build -o giny ./cmd/giny/*
