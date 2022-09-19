@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         go: [ '1.17', '1.18', '1.19' ]
-    name: Go ${{ matrix.go }} sample
+    name: Go ${{ matrix.go }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -27,7 +27,13 @@ jobs:
           GO111MODULE: on
 
       - name: Unit Test
-        run: go test ./...
+        run: go test -v -gcflags=-l -cover ./...
+
+      - name: Golint
+        run: golangci-lint run ./...
+
+      - name: Govet
+        run: go vet ./...
 
       - name: Build
-        run: go build -o giny ./cmd/giny/*
+        run: go build -ldflags="-s -w" -o giny ./cmd/giny/* && ls -hal giny
