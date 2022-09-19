@@ -29,8 +29,10 @@ jobs:
       - name: Unit Test
         run: go test -v -gcflags=-l -cover ./...
 
-      - name: Golint
-        run: golangci-lint run ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
 
       - name: Govet
         run: go vet ./...
