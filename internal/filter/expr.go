@@ -16,7 +16,7 @@ func Expr() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		data, exist := c.Get("metadata")
+		data, exist := c.Get(bizMetaKey)
 		if !exist {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"code": 8000, "msg": "no metadata"})
 			return

@@ -10,6 +10,9 @@ import (
 const (
 	appIDKey  = "X-Giny-App-Id"
 	userIDKey = "X-Giny-User-Id"
+
+	sinceMetaKey = "since"
+	bizMetaKey   = "biz"
 )
 
 type metadata struct {
@@ -24,7 +27,7 @@ func Metadata() gin.HandlerFunc {
 			UserID: cast.ToInt(c.GetHeader(appIDKey)),
 			AppID:  cast.ToInt(c.GetHeader(userIDKey)),
 		}
-		c.Set("metadata", meta)
-		c.Set("since", time.Now())
+		c.Set(bizMetaKey, meta)
+		c.Set(sinceMetaKey, time.Now())
 	}
 }

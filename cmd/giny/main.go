@@ -19,6 +19,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var version = "No Build Info"
+
 func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
