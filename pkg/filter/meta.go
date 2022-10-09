@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	appIDKey  = "X-Giny-App-Id"
-	userIDKey = "X-Giny-User-Id"
+	appIDKey  = "X-Giny-Aid"
+	userIDKey = "X-Giny-Uid"
 
 	sinceMetaKey = "since"
 	bizMetaKey   = "biz"

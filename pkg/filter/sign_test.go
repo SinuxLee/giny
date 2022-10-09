@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,7 +39,7 @@ type SignatureSuite struct {
 func (s *SignatureSuite) SetupSuite() {
 	r := gin.New()
 	r.Use(CheckSign(appSecret)).GET(signPath, func(c *gin.Context) {
-		c.String(http.StatusOK, "giny sign")
+		c.String(http.StatusOK, "giny")
 	})
 
 	s.ts = httptest.NewServer(r)
@@ -48,7 +49,43 @@ func (s *SignatureSuite) TearDownSuite() {
 	s.ts.Close()
 }
 
-func setHeader(req *http.Request) {
+func (s *SignatureSuite) newRequest() *http.Request {
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("%v%v?name=sinux&age=18&special=!@$^&*()_+#frame", s.ts.URL, signPath),
+		nil,
+	)
+
+	assert.Nil(s.T(), err)
+	return req
+}
+
+func (s *SignatureSuite) parseResponse(rsp *http.Response) string {
+	defer rsp.Body.Close()
+	res, err := ioutil.ReadAll(rsp.Body)
+	assert.Nil(s.T(), err)
+
+	t := rsp.Header.Get(contentHeader)
+	switch {
+	case strings.Contains(t, gin.MIMEJSON):
+		h := gin.H{}
+		err = json.Unmarshal(res, &h)
+		assert.Nil(s.T(), err)
+
+		msg, ok := h["msg"]
+		assert.True(s.T(), ok, true)
+
+		return msg.(string)
+	case strings.Contains(t, gin.MIMEPlain):
+		return string(res)
+
+	default:
+		s.T().Fatalf("can't handle this type: %v", t)
+	}
+
+	return ""
+}
+
+func setSignHeader(req *http.Request) {
 	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		ID:        xid.New().String(),
@@ -66,15 +103,9 @@ func setHeader(req *http.Request) {
 
 // TestCheckSignOK ...
 func (s *SignatureSuite) TestCheckSignOK() {
-	req, err := http.NewRequest(http.MethodGet,
-		fmt.Sprintf("%v%v?name=sinux&age=18&special=!@$^&*()_+#frame", s.ts.URL, signPath),
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
+	req := s.newRequest()
+	setSignHeader(req)
 
-	setHeader(req)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		s.T().Fatal(err)
@@ -82,7 +113,7 @@ func (s *SignatureSuite) TestCheckSignOK() {
 
 	resp, _ := ioutil.ReadAll(res.Body)
 	_ = res.Body.Close()
-	assert.Equal(s.T(), "giny sign", string(resp))
+	assert.Equal(s.T(), "giny", string(resp))
 }
 
 // TestCheckSignBad ...
@@ -131,7 +162,7 @@ func TestCheckSign(t *testing.T) {
 func BenchmarkCheckSign(b *testing.B) {
 	r := gin.New()
 	r.Use(CheckSign(appSecret)).GET(signPath, func(c *gin.Context) {
-		c.String(http.StatusOK, "giny sign")
+		c.String(http.StatusOK, "giny")
 	})
 
 	w := httptest.NewRecorder()
@@ -139,7 +170,7 @@ func BenchmarkCheckSign(b *testing.B) {
 	if err != nil {
 		panic(err)
 	}
-	setHeader(req)
+	setSignHeader(req)
 
 	b.ReportAllocs()
 	b.ResetTimer()

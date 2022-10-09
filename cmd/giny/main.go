@@ -14,8 +14,9 @@ import (
 	helmet "github.com/danielkov/gin-helmet"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
+	limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/gin"
-	"github.com/sinuxlee/giny/internal/filter"
+	"github.com/sinuxlee/giny/pkg/filter"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,6 +28,7 @@ func main() {
 	r.Use(helmet.Default())
 	r.Use(cors.Default())
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.Use(limits.RequestSizeLimiter(http.DefaultMaxHeaderBytes / 4)) // 256KB
 
 	r.Any("/:service/*res",
 		filter.Metadata(),
@@ -35,6 +37,10 @@ func main() {
 		filter.Expr(),
 		filter.Proxy(),
 	)
+
+	r.GET("/ts", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"ts": time.Now().Unix()})
+	})
 
 	l, err := net.Listen("tcp", ":8080")
 	if err != nil {

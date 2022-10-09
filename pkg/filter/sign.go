@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
 	"sort"
@@ -37,7 +37,7 @@ func calcSign(req *http.Request, secret string) string {
 	}
 	_, _ = buf.WriteString(secret)
 
-	hash := md5.New()
+	hash := sha256.New()
 	hash.Write(buf.Bytes())
 	bytebufferpool.Put(buf)
 

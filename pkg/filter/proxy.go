@@ -26,7 +26,7 @@ func Proxy() gin.HandlerFunc {
 			Str("res", c.Param("res")).
 			Msg("request log")
 
-		req := cli.R().SetBody(http.MaxBytesReader(c.Writer, c.Request.Body, http.DefaultMaxHeaderBytes/4)) // 256KB
+		req := cli.R().SetBody(c.Request.Body)
 		rsp, err := req.Execute(c.Request.Method, c.Request.RequestURI)
 		if err != nil {
 			c.String(http.StatusBadGateway, err.Error())
