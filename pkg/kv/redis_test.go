@@ -31,7 +31,7 @@ func (s *RedisKVSuite) SetupSuite() {
 	assert.NotNil(s.T(), s.rs)
 
 	var err error
-	s.store, err = libkv.NewStore(StoreRedis, []string{"127.0.0.1:6379"}, &store.Config{Bucket: "giny"})
+	s.store, err = libkv.NewStore(StoreRedis, []string{"127.0.0.1:6379"}, nil)
 	assert.Nil(s.T(), err)
 
 	tree, err := s.store.WatchTree("/", make(chan struct{}, 1))

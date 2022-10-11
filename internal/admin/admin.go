@@ -4,10 +4,14 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"net/url"
+	"strings"
 
-	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
 	"github.com/gin-gonic/gin"
+	"github.com/sinuxlee/giny/internal/admin/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 //go:embed static/*
@@ -26,24 +30,46 @@ type Admin interface {
 	RegisterHandler(e *gin.Engine)
 }
 
-// NewAdmin ...
-func NewAdmin() Admin {
-	libkv.AddStore("redis", func(addrs []string, options *store.Config) (store.Store, error) {
-		return nil, nil
-	})
-
-	s, err := libkv.NewStore(store.CONSUL, []string{""}, &store.Config{})
-	if err != nil {
-		return nil
-	}
-
+// New ...
+func New(s store.Store, swaggerAddr string) Admin {
 	return &admin{
-		kv: s,
+		store:       s,
+		swaggerHost: swaggerAddr,
 	}
 }
 
+// swagger doc
+// @title Giny API Admin
+// @version 1.0
+// @description API Admin for Giny
+// @termsOfService https://github.com/sinuxlee/giny
+
+// @tag.name admin
+// @tag.description Some APIs to operate Key and Value in Store
+
+// @contact.name sinux
+// @contact.url https://github.com/sinuxlee/giny
+// @contact.email pingfan14@gmail.com
+
+// @license.name MIT
+// @license.url https://choosealicense.com/licenses/mit/
+
+// @schemes http
+// @host localhost:8086
+// @BasePath /api
+// @query.collection.format multi
+
+// @securityDefinitions.basic BasicAuth
+
+// @securityDefinitions.apikey TokenAuth
+// @in header
+// @name Authorization
+
+// @x-extension-openapi {"example": "value on a json format"}
+
 type admin struct {
-	kv store.Store
+	store       store.Store
+	swaggerHost string
 }
 
 // Data ...
@@ -59,13 +85,41 @@ func (d *admin) Response(ctx *gin.Context, resp *Response) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
+func (d *admin) swaggerDocs(r *gin.Engine) {
+	docs.SwaggerInfo.Host = d.swaggerHost
+	u := url.URL{
+		Scheme: "http",
+		Host:   d.swaggerHost,
+		Path:   "/swagger/doc.json",
+	}
+
+	r.GET("/swagger/*any", func(c *gin.Context) {
+		if strings.TrimPrefix(c.Param("any"), "/") == "" {
+			c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html")
+			c.Abort()
+		}
+	}, ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.URL(u.String())),
+	)
+}
+
 func (d *admin) RegisterHandler(r *gin.Engine) {
+	d.swaggerDocs(r)
+
 	if subFS, err := fs.Sub(static, "static"); err == nil {
 		r.StaticFS("/ui", http.FS(subFS))
 	}
 
 	api := r.Group("/api")
-	api.GET("/list", func(c *gin.Context) {
-		c.String(http.StatusOK, "api list")
-	})
+
+	api.GET("/redis", d.getRedis)
+	api.POST("/redis", d.createRedis)
+	api.PUT("/redis", d.updateRedis)
+	api.DELETE("/redis", d.deleteRedis)
+
+	api.GET("/gin", d.getGin)
+	api.POST("/gin", d.createGin)
+	api.PUT("/gin", d.updateGin)
+	api.DELETE("/gin", d.deleteGin)
 }

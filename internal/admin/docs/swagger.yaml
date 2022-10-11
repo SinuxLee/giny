@@ -1,0 +1,72 @@
+basePath: /api
+definitions:
+  config.RedisConf:
+    properties:
+      addr:
+        description: redis address
+        type: string
+      mode:
+        description: redis mode (cluster/standalone)
+        type: string
+      password:
+        description: password for login redis
+        type: string
+      username:
+        description: username for login redis
+        type: string
+    type: object
+host: localhost:8086
+info:
+  contact:
+    email: pingfan14@gmail.com
+    name: sinux
+    url: https://github.com/sinuxlee/giny
+  description: API Admin for Giny
+  license:
+    name: MIT
+    url: https://choosealicense.com/licenses/mit/
+  termsOfService: https://github.com/sinuxlee/giny
+  title: Giny API Admin
+  version: "1.0"
+paths:
+  /redis:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Get Redis Config from KV Store
+        config contains: mode(cluster/standalone), address, username, password
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 响应体
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                code:
+                  type: integer
+                data:
+                  $ref: '#/definitions/config.RedisConf'
+                msg:
+                  type: string
+              type: object
+      summary: Get Redis Config from KV Store
+      tags:
+      - Redis
+schemes:
+- http
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  TokenAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Some APIs to operate Key and Value in Store
+  name: admin
+x-extension-openapi:
+  example: value on a json format

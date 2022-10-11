@@ -2,7 +2,7 @@ package kv
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec
+	"crypto/sha1" // nolint:gosec
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -11,16 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
 	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 const (
-	StoreRedis = "redis"
+	StoreRedis store.Backend = "redis"
 
 	limitValueSize = 1 << 12 // 4K
 	scriptDelLock  = "delLock"
@@ -129,19 +128,24 @@ func Register() {
 // New create a store which base on redis
 func New(addr []string, options *store.Config) (store.Store, error) {
 	var c redis.UniversalClient
+	var user, pass, bucket string
+	if options != nil {
+		user, pass, bucket = options.Username, options.Password, options.Bucket
+	}
+
 	if length := len(addr); length <= 0 {
 		return nil, errors.New("empty addr")
 	} else if length > 1 {
 		c = redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:    addr,
-			Username: options.Username,
-			Password: options.Password,
+			Username: user,
+			Password: pass,
 		})
 	} else {
 		c = redis.NewClient(&redis.Options{
 			Addr:     addr[0],
-			Username: options.Username,
-			Password: options.Password,
+			Username: user,
+			Password: pass,
 		})
 	}
 
@@ -166,7 +170,7 @@ func New(addr []string, options *store.Config) (store.Store, error) {
 
 	return &redisKV{
 		cli:     c,
-		bucket:  options.Bucket,
+		bucket:  bucket,
 		scripts: scripts,
 	}, nil
 }
@@ -227,11 +231,11 @@ type redisKV struct {
 }
 
 func (r *redisKV) makeKey(key string) string {
-	return fmt.Sprintf("%v/{kv}/%v", r.bucket, strings.Trim(key, "/"))
+	return path.Join(fmt.Sprintf("{kv}/%v", r.bucket), key)
 }
 
 func (r *redisKV) trimPrefix(key string) string {
-	return strings.TrimPrefix(key, fmt.Sprintf("%v/{kv}/", r.bucket))
+	return strings.TrimPrefix(key, r.makeKey("")+"/")
 }
 
 func (r *redisKV) makeDir(dir string) string {
@@ -239,12 +243,11 @@ func (r *redisKV) makeDir(dir string) string {
 }
 
 func (r *redisKV) makeChannelPattern(dir string) string {
-	c, _ := path.Split(fmt.Sprintf("%v/{kv}/%v", r.bucket, strings.Trim(dir, "/")))
-	return c + "*"
+	return path.Join(fmt.Sprintf("{kv}/%v", r.bucket), dir) + "*"
 }
 
 func (r *redisKV) sha1Hex(v []byte) string {
-	hash := sha1.New() //nolint:gosec
+	hash := sha1.New() // nolint:gosec
 	_, _ = hash.Write(v)
 	return hex.EncodeToString(hash.Sum(nil))
 }

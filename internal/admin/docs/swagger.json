@@ -1,0 +1,108 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API Admin for Giny",
+        "title": "Giny API Admin",
+        "termsOfService": "https://github.com/sinuxlee/giny",
+        "contact": {
+            "name": "sinux",
+            "url": "https://github.com/sinuxlee/giny",
+            "email": "pingfan14@gmail.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://choosealicense.com/licenses/mit/"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8086",
+    "basePath": "/api",
+    "paths": {
+        "/redis": {
+            "get": {
+                "description": "Get Redis Config from KV Store\nconfig contains: mode(cluster/standalone), address, username, password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Redis"
+                ],
+                "summary": "Get Redis Config from KV Store",
+                "responses": {
+                    "200": {
+                        "description": "响应体",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "data": {
+                                            "$ref": "#/definitions/config.RedisConf"
+                                        },
+                                        "msg": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "config.RedisConf": {
+            "type": "object",
+            "properties": {
+                "addr": {
+                    "description": "redis address",
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "redis mode (cluster/standalone)",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "password for login redis",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "username for login redis",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BasicAuth": {
+            "type": "basic"
+        },
+        "TokenAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "tags": [
+        {
+            "description": "Some APIs to operate Key and Value in Store",
+            "name": "admin"
+        }
+    ],
+    "x-extension-openapi": {
+        "example": "value on a json format"
+    }
+}
