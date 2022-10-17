@@ -15,7 +15,7 @@ import (
 // @Accept json
 // @Produce json
 // @Success 200 {object} object{code=int,msg=string,data=config.RedisConf} "响应体"
-// @Router /redis [get]
+// @Router /api/redis [get]
 func (d *admin) getRedis(c *gin.Context) {
 	pair, err := d.store.Get(config.RedisKey)
 	if err != nil {

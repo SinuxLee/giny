@@ -230,6 +230,10 @@ type redisKV struct {
 	scripts map[string]*redis.Script
 }
 
+func (r *redisKV) makeLockKey(name string) string {
+	return r.makeKey("lock/" + name)
+}
+
 func (r *redisKV) makeKey(key string) string {
 	return path.Join(fmt.Sprintf("{kv}/%v", r.bucket), key)
 }
@@ -389,7 +393,7 @@ func (r *redisKV) NewLock(key string, options *store.LockOptions) (store.Locker,
 	return &redisLock{
 		LockOptions: options,
 		cli:         r.cli,
-		key:         r.makeKey(key),
+		key:         r.makeLockKey(key),
 		script:      r.scripts[scriptDelLock],
 	}, nil
 }

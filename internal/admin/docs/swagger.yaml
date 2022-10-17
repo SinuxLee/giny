@@ -1,5 +1,15 @@
-basePath: /api
+basePath: /admin
 definitions:
+  admin.login:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
   config.RedisConf:
     properties:
       addr:
@@ -29,7 +39,7 @@ info:
   title: Giny API Admin
   version: "1.0"
 paths:
-  /redis:
+  /api/redis:
     get:
       consumes:
       - application/json
@@ -55,12 +65,103 @@ paths:
       summary: Get Redis Config from KV Store
       tags:
       - Redis
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login Admin, the API will return Token
+      parameters:
+      - description: name and pass
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.login'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: HTTP Response
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                code:
+                  type: integer
+                data:
+                  allOf:
+                  - type: object
+                  - properties:
+                      expireAt:
+                        type: integer
+                      token:
+                        type: string
+                    type: object
+                msg:
+                  type: string
+              type: object
+      summary: Login Giny API Admin
+      tags:
+      - User
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout Admin, let client reset cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: HTTP Response
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                code:
+                  type: integer
+                msg:
+                  type: string
+              type: object
+      summary: Logout Giny API Admin
+      tags:
+      - User
+  /auth/refresh-token:
+    get:
+      consumes:
+      - application/json
+      description: return new token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: HTTP Response
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                code:
+                  type: integer
+                data:
+                  allOf:
+                  - type: object
+                  - properties:
+                      expireAt:
+                        type: integer
+                      token:
+                        type: string
+                    type: object
+                msg:
+                  type: string
+              type: object
+      summary: Refresh Token
+      tags:
+      - User
 schemes:
 - http
 securityDefinitions:
   BasicAuth:
     type: basic
-  TokenAuth:
+  JWT:
     in: header
     name: Authorization
     type: apiKey

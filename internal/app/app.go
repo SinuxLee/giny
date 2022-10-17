@@ -2,13 +2,11 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -21,7 +19,7 @@ import (
 )
 
 var (
-	serverName = "giny"
+	serviceName = "giny"
 
 	storeAddrKey = "store"
 	storeAddrDef = "127.0.0.1:6379"
@@ -82,6 +80,7 @@ type app struct {
 	nodeID   int
 	redisCli redis.UniversalClient
 	kvStore  store.Store
+	conf     config.Configure
 	web      http.Server
 }
 
@@ -115,88 +114,5 @@ func (a *app) Stop() error {
 	if err := a.g.Wait(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		_, _ = fmt.Fprintln(os.Stderr, err.Error())
 	}
-	return nil
-}
-
-func (a *app) makeStoreKey(key string) string {
-	if storePrefixDef == "" {
-		return fmt.Sprintf("%v/%v", serverName, key)
-	}
-	return fmt.Sprintf("%v/%v/%v", storePrefixDef, serverName, key)
-}
-
-func (a *app) getStoreConf(key string, data interface{}, def interface{}) error {
-	storeKey := a.makeStoreKey(key)
-	kvPair, err := a.kvStore.Get(storeKey)
-	if err != nil {
-		if !errors.Is(err, store.ErrKeyNotFound) || a.nodeID > 1 {
-			return err
-		}
-
-		// first startup
-		value, err := json.MarshalIndent(def, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		if err = a.kvStore.Put(storeKey, value, nil); err != nil {
-			return err
-		}
-
-		if kvPair, err = a.kvStore.Get(storeKey); err != nil {
-			return err
-		}
-	}
-
-	err = json.Unmarshal(kvPair.Value, data)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *app) watchStoreConf(key string, observer config.Handler) error {
-	stopCh := make(chan struct{}, 1)
-	kvChan, err := a.kvStore.Watch(a.makeStoreKey(key), stopCh)
-	if err != nil {
-		return errors.Wrapf(err, "watch store key: %v", a.makeStoreKey(key))
-	}
-
-	go func() {
-		defer close(stopCh)
-		for kv := range kvChan {
-			// TODO: compare last index
-			_ = observer.OnChanged(key, kv.Value)
-		}
-	}()
-
-	return nil
-}
-
-func (a *app) watchStoreConfTree(root string, observer config.Handler) error {
-	stopCh := make(chan struct{}, 1)
-	kvChan, err := a.kvStore.WatchTree(a.makeStoreKey(root), stopCh)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		defer close(stopCh)
-
-		for kv := range kvChan {
-			for _, pair := range kv {
-				if pair.Value == nil {
-					continue
-				}
-
-				idx := strings.LastIndex(pair.Key, root) + len(root)
-				if err = observer.OnChanged(strings.TrimPrefix(pair.Key[idx:], "/"), pair.Value); err != nil {
-					log.Err(err).Str("key", pair.Key).Str("value", string(pair.Value)).Msg("watch store dir")
-				}
-			}
-		}
-	}()
-
 	return nil
 }

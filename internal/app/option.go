@@ -8,12 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arl/statsviz"
 	helmet "github.com/danielkov/gin-helmet"
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
 	"github.com/duke-git/lancet/netutil"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
+	"github.com/gin-contrib/pprof"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -35,7 +37,7 @@ const (
 func Version(info string) Option {
 	return func(a *app) error {
 		if printVersionDef {
-			_, _ = fmt.Fprintf(os.Stderr, "%v build info: %v\n", serverName,
+			_, _ = fmt.Fprintf(os.Stderr, "%v build info: %v\n", serviceName,
 				strings.ReplaceAll(info, "_", "\n"))
 			os.Exit(0)
 		}
@@ -47,16 +49,16 @@ func Version(info string) Option {
 // NodeID ...
 func NodeID() Option {
 	return func(a *app) error {
-		path, _ := os.Getwd()
+		dir, _ := os.Getwd()
 		named, err := nid.NewRedisNamed(storeAddrDef)
 		if err != nil {
 			return err
 		}
 
 		if a.nodeID, err = named.GetNodeID(&nid.NameHolder{
-			LocalPath:  path,
+			LocalPath:  dir,
 			LocalIP:    netutil.GetInternalIp(),
-			ServiceKey: serverName,
+			ServiceKey: serviceName,
 		}); err != nil {
 			return err
 		}
@@ -123,6 +125,7 @@ func KVStore() Option {
 			return errors.Wrap(err, "new kv store")
 		}
 
+		a.conf = config.New(a.kvStore, serviceName)
 		return nil
 	}
 }
@@ -131,7 +134,7 @@ func KVStore() Option {
 func Redis() Option {
 	return func(a *app) error {
 		conf := &config.RedisConf{}
-		if err := a.getStoreConf(config.RedisKey, conf, &config.RedisConf{
+		if err := a.conf.GetStoreConf(config.RedisKey, conf, &config.RedisConf{
 			Mode:     config.StandaloneMode,
 			Addr:     "127.0.0.1:6379",
 			Username: "",
@@ -165,7 +168,7 @@ func Handler() Option {
 	return func(a *app) error {
 		var r *gin.Engine
 		conf := &config.WebConf{}
-		if err := a.getStoreConf("web", conf, &config.WebConf{
+		if err := a.conf.GetStoreConf("web", conf, &config.WebConf{
 			GinMode: "debug",
 			Port:    ":8086",
 			Filter: []string{
@@ -181,6 +184,14 @@ func Handler() Option {
 		switch gin.Mode() {
 		case gin.DebugMode:
 			r = gin.Default()
+			pprof.Register(r)
+			r.GET("/debug/statsviz/*filepath", func(c *gin.Context) {
+				if c.Param("filepath") == "/ws" {
+					statsviz.Ws(c.Writer, c.Request)
+					return
+				}
+				statsviz.IndexAtRoot("/debug/statsviz").ServeHTTP(c.Writer, c.Request)
+			})
 		case gin.TestMode:
 			r = gin.New()
 			r.Use(gin.LoggerWithWriter(gin.DefaultErrorWriter))
@@ -221,13 +232,16 @@ func Handler() Option {
 		})
 
 		if adminDef {
-			addr := netutil.GetInternalIp() + conf.Port
-			admin.New(a.kvStore, addr).RegisterHandler(r)
+			if adm, err := admin.New(a.kvStore, netutil.GetInternalIp()+conf.Port); err != nil {
+				return errors.Wrap(err, "init api admin")
+			} else if err = adm.RegisterHandler(r); err != nil {
+				return errors.Wrap(err, "init api admin")
+			}
 		}
 
 		a.web = http.Server{
 			Addr:              conf.Port,
-			Handler:           http.TimeoutHandler(r, time.Second*10, "timeout"),
+			Handler:           r,
 			ReadTimeout:       time.Second * 5,
 			ReadHeaderTimeout: time.Second * 2,
 			WriteTimeout:      time.Second * 5,

@@ -19,9 +19,9 @@
         "version": "1.0"
     },
     "host": "localhost:8086",
-    "basePath": "/api",
+    "basePath": "/admin",
     "paths": {
-        "/redis": {
+        "/api/redis": {
             "get": {
                 "description": "Get Redis Config from KV Store\nconfig contains: mode(cluster/standalone), address, username, password",
                 "consumes": [
@@ -61,9 +61,185 @@
                     }
                 }
             }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Login Admin, the API will return Token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Login Giny API Admin",
+                "parameters": [
+                    {
+                        "description": "name and pass",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.login"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTTP Response",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "expireAt": {
+                                                            "type": "integer"
+                                                        },
+                                                        "token": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "msg": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Logout Admin, let client reset cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Logout Giny API Admin",
+                "responses": {
+                    "200": {
+                        "description": "HTTP Response",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "msg": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh-token": {
+            "get": {
+                "description": "return new token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Refresh Token",
+                "responses": {
+                    "200": {
+                        "description": "HTTP Response",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "expireAt": {
+                                                            "type": "integer"
+                                                        },
+                                                        "token": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "msg": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "admin.login": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "config.RedisConf": {
             "type": "object",
             "properties": {
@@ -90,7 +266,7 @@
         "BasicAuth": {
             "type": "basic"
         },
-        "TokenAuth": {
+        "JWT": {
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
